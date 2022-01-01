@@ -1,0 +1,32 @@
+[package]
+name = "onekibu"
+version = "0.1.0"
+authors = ["Julien Cretin <cretin@google.com>"]
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+cortex-m-rtic = "1.0.0"
+defmt = "0.3.0"
+defmt-rtt = "0.3.1"
+panic-abort = "0.3.2"
+panic-probe = { version = "0.3.0", features = ["print-defmt"] }
+usb-device = "0.2.8"
+usbd-hid = "0.5.2"
+# TODO: Add alloc support.
+# alloc-cortex-m = "0.4.1"
+
+[dependencies.nrf52840-hal]
+optional = true
+version = "0.14.0"
+
+[dependencies.stm32l4xx-hal]
+optional = true
+version = "0.6.0"
+features = ["rt", "stm32l4x2", "stm32-usbd"]
+
+[features]
+board-nrf52840-dk = ["chip-nrf52840"]
+board-nrf52840-dongle = ["chip-nrf52840"]
+board-solo = ["stm32l4xx-hal"]
+chip-nrf52840 = ["nrf52840-hal"]
