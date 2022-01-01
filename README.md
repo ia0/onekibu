@@ -1,9 +1,8 @@
 # Onekibu (One-Button Keyboard)
 
-This repository provides a USB keyboard firmware for embedded devices like the
-[nRF52840 dongle]. The particularity of this keyboard is that it works with a
-single button. As such, keys are pressed (and released) with patterns similar to
-[Morse code].
+Onekibu is a firmware providing a USB keyboard interface for devices with a
+single button, like the [nRF52840 dongle]. As such, keys are pressed (and
+released) with patterns similar to [Morse code].
 
 This is not an official Google product.
 
