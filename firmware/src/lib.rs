@@ -134,6 +134,8 @@ impl From<u8> for Seq {
 
 // TODO: Allow pre-configured sequence of keys (e.g. to output unicode with Ctrl+Shift+U xxx). See
 // https://github.com/TyberiusPrime/KeyToKey/blob/91ba3fe917e626c820f681fd2e2a97637ef16344/src/lib.rs#L313-L322
+
+// TODO: Add the default mapping in the README too.
 /// Maps sequences to keycodes.
 const MAP: [u8; 127] = [
     0,   //

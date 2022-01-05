@@ -117,7 +117,7 @@ impl super::BoardApi for Board {
 
     fn input(&self) -> onekibu::Input {
         onekibu::Input {
-            timestamp: pac::DWT::get_cycle_count() as usize,
+            timestamp: pac::DWT::cycle_count() as usize,
             button: self.button.is_low().unwrap(),
         }
     }
