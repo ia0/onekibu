@@ -40,6 +40,7 @@ pub struct Input {
     /// The current timestamp.
     pub timestamp: usize,
     /// Whether the button is being pressed.
+    // TODO: Add a layer for debouncing? See https://github.com/TyberiusPrime/debouncing
     pub button: bool,
 }
 
@@ -130,6 +131,9 @@ impl From<u8> for Seq {
 // TODO: Those are actually actions. Most of them are just key press+release. But we can add a
 // PrepareSequence and CommitSequence actions. Keys in between are toggled. All keys are released
 // automatically (if not already) during at the end of the sequence.
+
+// TODO: Allow pre-configured sequence of keys (e.g. to output unicode with Ctrl+Shift+U xxx). See
+// https://github.com/TyberiusPrime/KeyToKey/blob/91ba3fe917e626c820f681fd2e2a97637ef16344/src/lib.rs#L313-L322
 /// Maps sequences to keycodes.
 const MAP: [u8; 127] = [
     0,   //
@@ -172,6 +176,7 @@ const MAP: [u8; 127] = [
     45,  // ..--. -/_
     31,  // ..--- 2
     226, // .-... LAlt
+    // TODO: We also need RCtrl, RShift, and RAlt (used for compose)
     46,  // .-..- =/+
     47,  // .-.-. [/{
     48,  // .-.-- ]/}

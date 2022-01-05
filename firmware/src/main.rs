@@ -14,11 +14,14 @@
 
 #![no_main]
 #![no_std]
+#![feature(alloc_error_handler)]
+
+extern crate alloc;
 
 mod board;
 
 // TODO: Allow configuration with as mass storage (e.g. a file with mapping, or one file per
-// mapping).
+// mapping). Look into https://github.com/cs2dsb/stm32-usb.rs.
 
 // TODO: Use NFC to display current mapping (or configuration) as text. And switch between
 // pre-configured mappings (or to configure new mapping? is it possible?).
@@ -26,6 +29,7 @@ mod board;
 #[rtic::app(device = crate::board::pac, peripherals = true)]
 mod app {
     use crate::board::{Board, BoardApi};
+    use alloc_cortex_m::CortexMHeap;
     use defmt::Debug2Format;
     #[cfg(debug_assertions)]
     use defmt_rtt as _;
@@ -37,6 +41,14 @@ mod app {
     use usbd_hid::descriptor::{KeyboardReport, SerializedDescriptor};
     use usbd_hid::hid_class::HIDClass;
     use usbd_hid::UsbError;
+
+    #[global_allocator]
+    static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
+    #[alloc_error_handler]
+    fn oom(_: core::alloc::Layout) -> ! {
+        panic!("OOM")
+    }
 
     #[shared]
     struct Shared {}
@@ -51,6 +63,7 @@ mod app {
     #[init]
     fn init(c: init::Context) -> (Shared, Local, init::Monotonics) {
         defmt::trace!("init");
+        init_allocator();
         let board = Board::new(c.core, c.device);
         // TODO: Somehow show when the board is ready (USB ready), e.g. red light from here until
         // USB ready.
@@ -115,5 +128,17 @@ mod app {
             Err(UsbError::WouldBlock) => (),
             Err(err) => defmt::error!("poll failed: {:?}", Debug2Format(&err)),
         }
+    }
+
+    fn init_allocator() {
+        extern "C" {
+            static mut __sheap: u32;
+            static mut __eheap: u32;
+        }
+        let sheap = unsafe { &mut __sheap } as *mut u32 as usize;
+        let eheap = unsafe { &mut __eheap } as *mut u32 as usize;
+        assert!(sheap < eheap);
+        // Unsafe: Called only once before any allocation.
+        unsafe { ALLOCATOR.init(sheap, eheap - sheap) }
     }
 }

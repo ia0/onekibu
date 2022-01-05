@@ -67,12 +67,7 @@ impl Build {
     fn execute(self) {
         let mut cargo = Command::new("cargo");
         let mut rustflags = vec!["-C link-arg=--nmagic", "-C link-arg=-Tlink.x"];
-        match self.board.as_str() {
-            "nrf52840-dk" => (),
-            "nrf52840-dongle" => cargo.env("ONEKIBU_MEMORY_X", "nrf52840-dfu.x"),
-            "solo" => cargo.env("ONEKIBU_MEMORY_X", "solo.x"),
-            _ => unimplemented!("No build support for {}.", self.board),
-        }
+        cargo.env("ONEKIBU_MEMORY_X", format!("{}.x", self.board));
         cargo.arg("build");
         cargo.arg("--package=onekibu");
         let target = "thumbv7em-none-eabi";
