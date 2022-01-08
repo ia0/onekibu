@@ -103,6 +103,7 @@ impl super::BoardApi for Board {
             onekibu::BitState::Cancel => [0, 1, 0, 0],
             onekibu::BitState::Done => [0, 0, 0, 1],
         };
+        #[allow(clippy::needless_range_loop)]
         for i in 0 .. 4 {
             if bits[i] == 0 {
                 self.leds[i].set_high().unwrap();

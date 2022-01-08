@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use rustc_demangle::demangle;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::ffi::OsStr;
 use std::os::unix::process::CommandExt;
 use structopt::StructOpt;
@@ -20,6 +23,9 @@ use structopt::StructOpt;
 enum Flags {
     /// Builds the firmware
     Build(Build),
+
+    /// Runs clippy
+    Clippy,
 
     /// Runs the unit tests
     Test,
@@ -43,15 +49,42 @@ struct Build {
     #[structopt(long)]
     size: bool,
 
+    /// Show the (top N) stack sizes of the firmware
+    #[structopt(long)]
+    stack_sizes: Option<Option<usize>>,
+
     /// Flash (and run, if the board supports it) the firmware
     #[structopt(long)]
     flash: bool,
 }
 
+const BOARDS: &[&str] = &["nrf52840-dk", "nrf52840-dongle", "solo"];
+const TARGET: &str = "thumbv7em-none-eabi";
+
 impl Flags {
     fn execute(self) {
         match self {
             Flags::Build(x) => x.execute(),
+            Flags::Clippy => {
+                let clippy = |package, args: &[&str]| {
+                    let mut cargo = Command::new("cargo");
+                    cargo.arg("clippy");
+                    cargo.arg(format!("--package={}", package));
+                    for arg in args {
+                        cargo.arg(arg);
+                    }
+                    cargo.arg("--");
+                    cargo.arg("--deny=warnings");
+                    cargo.spawn();
+                };
+                clippy("xtask", &[]);
+                for board in BOARDS {
+                    clippy(
+                        "onekibu",
+                        &[&format!("--features=board-{}", board), &format!("--target={}", TARGET)],
+                    );
+                }
+            }
             Flags::Test => {
                 let mut cargo = Command::new("cargo");
                 cargo.arg("test");
@@ -67,35 +100,64 @@ impl Build {
     fn execute(self) {
         let mut cargo = Command::new("cargo");
         let mut rustflags = vec!["-C link-arg=--nmagic", "-C link-arg=-Tlink.x"];
+        if self.stack_sizes.is_some() {
+            rustflags.push("-Z emit-stack-sizes");
+            rustflags.push("-C link-arg=-Tstack-sizes.x");
+        }
         cargo.env("ONEKIBU_MEMORY_X", format!("{}.x", self.board));
         cargo.arg("build");
         cargo.arg("--package=onekibu");
-        let target = "thumbv7em-none-eabi";
-        cargo.arg(format!("--target={}", target));
+        cargo.arg(format!("--target={}", TARGET));
         cargo.arg(format!("--features=board-{}", self.board));
-        let mode = if self.release {
+        let (mode, mut log) = if self.release {
             cargo.arg("--release");
             rustflags.push("-C codegen-units=1");
             rustflags.push("-C embed-bitcode=yes");
             rustflags.push("-C lto=fat");
             rustflags.push("-C opt-level=z");
-            cargo.env("DEFMT_LOG", "off");
-            "release"
+            ("release", "off")
         } else {
-            rustflags.push("-C link-arg=-Tdefmt.x");
-            cargo.env("DEFMT_LOG", "trace");
-            "debug"
+            ("debug", "trace")
         };
-        if let Some(filter) = self.log {
-            cargo.env("DEFMT_LOG", filter);
+        if let Some(filter) = &self.log {
+            log = filter;
+        }
+        cargo.env("DEFMT_LOG", log);
+        if log != "off" {
+            rustflags.push("-C link-arg=-Tdefmt.x");
+            cargo.arg("--features=log");
         }
         cargo.env("RUSTFLAGS", rustflags.join(" "));
         cargo.spawn();
-        let elf = format!("target/{}/{}/onekibu", target, mode);
+        let elf = format!("target/{}/{}/onekibu", TARGET, mode);
         if self.size {
             let mut size = Command::new("rust-size");
             size.arg(&elf);
             size.spawn();
+        }
+        if let Some(stack_sizes) = self.stack_sizes {
+            let elf = std::fs::read(&elf).unwrap();
+            let symbols = stack_sizes::analyze_executable(&elf).unwrap();
+            assert!(symbols.have_32_bit_addresses);
+            assert!(symbols.undefined.is_empty());
+            let max_stack_sizes = stack_sizes.unwrap_or(10);
+            let mut top_stack_sizes = BinaryHeap::new();
+            for (address, symbol) in symbols.defined {
+                let stack = match symbol.stack() {
+                    None => continue,
+                    Some(x) => x,
+                };
+                // Multiple symbols can have the same address. Just use the first name.
+                assert!(!symbol.names().is_empty());
+                let name = *symbol.names().first().unwrap();
+                top_stack_sizes.push((Reverse(stack), address, name));
+                if top_stack_sizes.len() > max_stack_sizes {
+                    top_stack_sizes.pop();
+                }
+            }
+            while let Some((Reverse(stack), address, name)) = top_stack_sizes.pop() {
+                println!("{:#010x}\t{}\t{}", address, stack, demangle(name));
+            }
         }
         if !self.flash {
             return;

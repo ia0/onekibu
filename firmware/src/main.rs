@@ -31,11 +31,11 @@ mod app {
     use crate::board::{Board, BoardApi};
     use alloc_cortex_m::CortexMHeap;
     use defmt::Debug2Format;
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "log")]
     use defmt_rtt as _;
-    #[cfg(not(debug_assertions))]
+    #[cfg(not(feature = "log"))]
     use panic_abort as _;
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "log")]
     use panic_probe as _;
     use usb_device::device::{UsbDevice, UsbDeviceBuilder, UsbVidPid};
     use usbd_hid::descriptor::{KeyboardReport, SerializedDescriptor};
@@ -70,7 +70,7 @@ mod app {
         let usb_bus = board.usb_bus();
         let usb_hid = HIDClass::new(usb_bus, KeyboardReport::desc(), 60);
         let usb_dev =
-            UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x04ca, 0x0020)).product("onekibu").build();
+            UsbDeviceBuilder::new(usb_bus, UsbVidPid(0x04ca, 0x0020)).product("onekibu").build();
         let usb = Usb { hid: usb_hid, dev: usb_dev };
         let state = onekibu::State::new(board.config());
         (Shared {}, Local { board, usb, state }, init::Monotonics())
