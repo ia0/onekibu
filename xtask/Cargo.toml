@@ -6,4 +6,6 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
+rustc-demangle = "0.1.21"
+stack-sizes = "0.4.0"
 structopt = { version = "0.3.25", default-features = false }
