@@ -24,6 +24,9 @@ enum Flags {
     /// Builds the firmware
     Build(Build),
 
+    /// Starts a gdb session
+    Gdb(Gdb),
+
     /// Runs clippy
     Clippy,
 
@@ -58,6 +61,19 @@ struct Build {
     flash: bool,
 }
 
+#[derive(Debug, StructOpt)]
+enum Gdb {
+    /// Starts a gdb server in this terminal
+    Server,
+
+    /// Starts a gdb session in this terminal (a server must be running)
+    Client {
+        /// Whether the firmware was built in release mode
+        #[structopt(long)]
+        release: bool,
+    },
+}
+
 const BOARDS: &[&str] = &["nrf52840-dk", "nrf52840-dongle", "solo"];
 const TARGET: &str = "thumbv7em-none-eabi";
 
@@ -65,14 +81,13 @@ impl Flags {
     fn execute(self) {
         match self {
             Flags::Build(x) => x.execute(),
+            Flags::Gdb(x) => x.execute(),
             Flags::Clippy => {
                 let clippy = |package, args: &[&str]| {
                     let mut cargo = Command::new("cargo");
                     cargo.arg("clippy");
                     cargo.arg(format!("--package={}", package));
-                    for arg in args {
-                        cargo.arg(arg);
-                    }
+                    cargo.args(args);
                     cargo.arg("--");
                     cargo.arg("--deny=warnings");
                     cargo.spawn();
@@ -109,19 +124,18 @@ impl Build {
         cargo.arg("--package=onekibu");
         cargo.arg(format!("--target={}", TARGET));
         cargo.arg(format!("--features=board-{}", self.board));
-        let (mode, mut log) = if self.release {
+        if self.release {
             cargo.arg("--release");
             rustflags.push("-C codegen-units=1");
             rustflags.push("-C embed-bitcode=yes");
             rustflags.push("-C lto=fat");
             rustflags.push("-C opt-level=z");
-            ("release", "off")
-        } else {
-            ("debug", "trace")
-        };
-        if let Some(filter) = &self.log {
-            log = filter;
         }
+        let log = match &self.log {
+            None if self.release => "off",
+            None => "trace",
+            Some(x) => x,
+        };
         cargo.env("DEFMT_LOG", log);
         if log != "off" {
             rustflags.push("-C link-arg=-Tdefmt.x");
@@ -129,7 +143,7 @@ impl Build {
         }
         cargo.env("RUSTFLAGS", rustflags.join(" "));
         cargo.spawn();
-        let elf = format!("target/{}/{}/onekibu", TARGET, mode);
+        let elf = elf(self.release);
         if self.size {
             let mut size = Command::new("rust-size");
             size.arg(&elf);
@@ -193,6 +207,27 @@ impl Build {
     }
 }
 
+impl Gdb {
+    fn execute(self) {
+        match self {
+            Gdb::Server => {
+                let mut jlink = Command::new("JLinkGDBServer");
+                jlink.args(["-device", "nrf52840_xxaa"]);
+                jlink.args(["-if", "swd"]);
+                jlink.args(["-speed", "4000"]);
+                jlink.args(["-port", "2331"]);
+                jlink.exec();
+            }
+            Gdb::Client { release } => {
+                let mut gdb = Command::new("gdb-multiarch");
+                gdb.args(["-ex", &format!("file {}", elf(release))]);
+                gdb.args(["-ex", "target remote localhost:2331"]);
+                gdb.exec();
+            }
+        }
+    }
+}
+
 struct Command {
     command: std::process::Command,
 }
@@ -214,6 +249,10 @@ impl Command {
         self.command.arg(arg);
     }
 
+    fn args(&mut self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) {
+        self.command.args(args);
+    }
+
     fn debug(&self) {
         for (k, v) in self.command.get_envs() {
             eprint!("{:?}={:?} ", k, v);
@@ -233,6 +272,10 @@ impl Command {
         self.debug();
         panic!("{}", self.command.exec());
     }
+}
+
+fn elf(release: bool) -> String {
+    format!("target/{}/{}/onekibu", TARGET, if release { "release" } else { "debug" })
 }
 
 fn main() {
