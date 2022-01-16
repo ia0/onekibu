@@ -26,6 +26,8 @@ mod board;
 // TODO: Use NFC to display current mapping (or configuration) as text. And switch between
 // pre-configured mappings (or to configure new mapping? is it possible?).
 
+// TODO: Move library in separate crate and make it interrupt driven (button, time, usb).
+
 #[rtic::app(device = crate::board::pac, peripherals = true)]
 mod app {
     use crate::board::{Board, BoardApi};
