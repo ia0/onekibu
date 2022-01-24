@@ -23,9 +23,12 @@ pub use nrf52840_hal::pac;
 pub struct Board {
     #[cfg(feature = "board-nrf52840-dk")]
     button: [Pin<Input<PullUp>>; 4],
-    #[cfg(feature = "board-nrf52840-dongle")]
+    #[cfg(any(feature = "board-nrf52840-dongle", feature = "board-nrf52840-mdk-dongle"))]
     button: Pin<Input<PullUp>>,
+    #[cfg(any(feature = "board-nrf52840-dk", feature = "board-nrf52840-dongle"))]
     leds: [Pin<Output<PushPull>>; 4],
+    #[cfg(feature = "board-nrf52840-mdk-dongle")]
+    leds: [Pin<Output<PushPull>>; 3],
     timer: pac::TIMER0,
 }
 
@@ -48,6 +51,8 @@ impl super::BoardApi for Board {
         ];
         #[cfg(feature = "board-nrf52840-dongle")]
         let button = port1.p1_06.into_pullup_input().degrade();
+        #[cfg(feature = "board-nrf52840-mdk-dongle")]
+        let button = port0.p0_18.into_pullup_input().degrade();
         #[cfg(feature = "board-nrf52840-dk")]
         let leds = [
             port0.p0_13.into_push_pull_output(Level::High).degrade(),
@@ -61,6 +66,12 @@ impl super::BoardApi for Board {
             port0.p0_08.into_push_pull_output(Level::High).degrade(),
             port1.p1_09.into_push_pull_output(Level::High).degrade(),
             port0.p0_12.into_push_pull_output(Level::High).degrade(),
+        ];
+        #[cfg(feature = "board-nrf52840-mdk-dongle")]
+        let leds = [
+            port0.p0_23.into_push_pull_output(Level::High).degrade(),
+            port0.p0_22.into_push_pull_output(Level::High).degrade(),
+            port0.p0_24.into_push_pull_output(Level::High).degrade(),
         ];
         let timer = p.TIMER0;
         timer.prescaler.write(
@@ -90,7 +101,7 @@ impl super::BoardApi for Board {
         let timestamp = self.timer.cc[1].read().bits() as usize;
         #[cfg(feature = "board-nrf52840-dk")]
         let button = self.button.iter().any(|x| x.is_low().unwrap());
-        #[cfg(feature = "board-nrf52840-dongle")]
+        #[cfg(any(feature = "board-nrf52840-dongle", feature = "board-nrf52840-mdk-dongle"))]
         let button = self.button.is_low().unwrap();
         onekibu::Input { timestamp, button }
     }
@@ -103,9 +114,10 @@ impl super::BoardApi for Board {
             onekibu::BitState::Cancel => [0, 1, 0, 0],
             onekibu::BitState::Done => [0, 0, 0, 1],
         };
-        #[allow(clippy::needless_range_loop)]
-        for i in 0 .. 4 {
-            if bits[i] == 0 {
+        #[cfg(feature = "board-nrf52840-mdk-dongle")]
+        let bits = &bits[1 ..];
+        for (i, &b) in bits.iter().enumerate() {
+            if b == 0 {
                 self.leds[i].set_high().unwrap();
             } else {
                 self.leds[i].set_low().unwrap();

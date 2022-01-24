@@ -10,7 +10,7 @@ info_exec() {
   "$@"
 }
 
-for board in nrf52840-dk nrf52840-dongle solo; do
+for board in nrf52840-dk nrf52840-dongle nrf52840-mdk-dongle solo; do
   xtask_build="info_exec cargo xtask build --board=$board"
   $xtask_build
   $xtask_build --release
