@@ -74,7 +74,7 @@ enum Gdb {
     },
 }
 
-const BOARDS: &[&str] = &["nrf52840-dk", "nrf52840-dongle", "solo"];
+const BOARDS: &[&str] = &["nrf52840-dk", "nrf52840-dongle", "nrf52840-mdk-dongle", "solo"];
 const TARGET: &str = "thumbv7em-none-eabi";
 
 impl Flags {
@@ -188,14 +188,15 @@ impl Build {
                 nrfdfu.arg(&elf);
                 nrfdfu.spawn();
             }
+            "nrf52840-mdk-dongle" => {
+                let hex = hex(self.release);
+                let mut uf2conv = Command::new("uf2conv.py");
+                uf2conv.arg("--family=0xADA52840");
+                uf2conv.arg(&hex);
+                uf2conv.spawn();
+            }
             "solo" => {
-                let hex = format!("{}.hex", elf);
-                let mut objcopy = Command::new("arm-none-eabi-objcopy");
-                objcopy.arg("-O");
-                objcopy.arg("ihex");
-                objcopy.arg(&elf);
-                objcopy.arg(&hex);
-                objcopy.spawn();
+                let hex = hex(self.release);
                 let mut solo = Command::new("solo");
                 solo.arg("program");
                 solo.arg("bootloader");
@@ -276,6 +277,18 @@ impl Command {
 
 fn elf(release: bool) -> String {
     format!("target/{}/{}/onekibu", TARGET, if release { "release" } else { "debug" })
+}
+
+fn hex(release: bool) -> String {
+    let elf = elf(release);
+    let hex = format!("{}.hex", elf);
+    let mut objcopy = Command::new("arm-none-eabi-objcopy");
+    objcopy.arg("-O");
+    objcopy.arg("ihex");
+    objcopy.arg(&elf);
+    objcopy.arg(&hex);
+    objcopy.spawn();
+    hex
 }
 
 fn main() {

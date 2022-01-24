@@ -14,6 +14,7 @@ jobs:
         boards:
           - 'nrf52840-dk'
           - 'nrf52840-dongle'
+          - 'nrf52840-mdk-dongle'
           - 'solo'
         flags:
           - ''
