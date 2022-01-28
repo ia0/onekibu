@@ -29,8 +29,9 @@ To release on the [nRF52840 dongle] using `nrfdfu` (which you can install with
 To release on the [nRF52840 MDK dongle] using `uf2conv.py` (which you can copy
 from [here][uf2conv]):
 
-1. Plug the dongle while pressing its reset button.
-2. Run the command above with `BOARD=nrf52840-mdk-dongle`.
+1. Plug the dongle while pressing its button.
+2. Make sure an external drive named `MDK-DONGLE` is visible.
+3. Run the command above with `BOARD=nrf52840-mdk-dongle`.
 
 ## How to debug
 
