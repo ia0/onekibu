@@ -107,6 +107,7 @@ impl super::BoardApi for Board {
     }
 
     fn state(&mut self, state: onekibu::BitState) {
+        // TODO: Use a PWM.
         let bits = match state {
             onekibu::BitState::Ready => [0, 0, 0, 0],
             onekibu::BitState::Short => [0, 0, 1, 0],
