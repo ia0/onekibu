@@ -14,7 +14,7 @@
 
 #![no_main]
 #![no_std]
-#![feature(alloc_error_handler)]
+#![feature(default_alloc_error_handler)]
 
 extern crate alloc;
 
@@ -46,11 +46,6 @@ mod app {
 
     #[global_allocator]
     static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
-
-    #[alloc_error_handler]
-    fn oom(_: core::alloc::Layout) -> ! {
-        panic!("OOM")
-    }
 
     #[shared]
     struct Shared {}
