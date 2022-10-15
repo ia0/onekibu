@@ -17,7 +17,7 @@ for board in nrf52840-dk nrf52840-dongle nrf52840-mdk-dongle solo; do
   $xtask_build --release --log=error
 done
 info_exec cargo xtask test
-info_exec cargo fmt -- --check
+info_exec cargo xtask fmt
 info_exec cargo xtask clippy
 
 info "Done"

@@ -6,28 +6,28 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-alloc-cortex-m = "0.4.1"
-cortex-m-rtic = "1.0.0"
-defmt = "0.3.0"
-defmt-rtt = { version = "0.3.1", optional = true }
+alloc-cortex-m = "0.4.2"
+cortex-m-rtic = "1.1.3"
+defmt = "0.3.2"
+defmt-rtt = { version = "0.3.2", optional = true }
 panic-abort = "0.3.2"
 panic-probe = { version = "0.3.0", optional = true, features = ["print-defmt"] }
-usb-device = "0.2.8"
-usbd-hid = "0.5.2"
+usb-device = "0.2.9"
+usbd-hid = "0.6.1"
 
 [dependencies.nrf52840-hal]
 optional = true
-version = "0.14.0"
+version = "0.15.1"
 
 [dependencies.stm32l4xx-hal]
 optional = true
-version = "0.6.0"
-features = ["rt", "stm32l4x2", "stm32-usbd"]
+version = "0.7.1"
+features = ["rt", "stm32l432", "stm32-usbd"]
 
 [features]
 board-nrf52840-dk = ["chip-nrf52840"]
 board-nrf52840-dongle = ["chip-nrf52840"]
 board-nrf52840-mdk-dongle = ["chip-nrf52840"]
-board-solo = ["stm32l4xx-hal"]
-chip-nrf52840 = ["nrf52840-hal"]
-log = ["defmt-rtt", "panic-probe"]
+board-solo = ["dep:stm32l4xx-hal"]
+chip-nrf52840 = ["dep:nrf52840-hal"]
+log = ["dep:defmt-rtt", "dep:panic-probe"]

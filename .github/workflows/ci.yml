@@ -54,8 +54,8 @@ jobs:
           components: rustfmt
       - uses: actions-rs/cargo@v1
         with:
-          command: fmt
-          args: -- --check
+          command: xtask
+          args: fmt
   clippy:
     runs-on: ubuntu-latest
     steps:

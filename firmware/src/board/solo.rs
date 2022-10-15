@@ -13,10 +13,7 @@
 // limitations under the License.
 
 use stm32l4xx_hal::delay::Delay;
-use stm32l4xx_hal::gpio::{
-    gpioa::{PAx, PA0},
-    Input, Output, PullUp, PushPull,
-};
+use stm32l4xx_hal::gpio::{gpioa::PA0, EPin, Input, Output, PullUp, PushPull};
 use stm32l4xx_hal::prelude::*;
 use stm32l4xx_hal::stm32;
 use stm32l4xx_hal::usb::{Peripheral, UsbBus};
@@ -26,7 +23,7 @@ pub use stm32l4xx_hal::pac;
 
 pub struct Board {
     button: PA0<Input<PullUp>>,
-    leds: [PAx<Output<PushPull>>; 3],
+    leds: [EPin<Output<PushPull>>; 3],
     timer: Delay,
 }
 
@@ -35,9 +32,9 @@ static mut USB_BUS: Option<UsbBusAllocator<UsbBus<Peripheral>>> = None;
 impl Board {
     pub fn blink(&mut self, i: usize) {
         for _ in 0 .. 3 {
-            self.leds[i].set_low().unwrap();
+            self.leds[i].set_low();
             self.timer.delay_ms(100u32);
-            self.leds[i].set_high().unwrap();
+            self.leds[i].set_high();
             self.timer.delay_ms(100u32);
         }
     }
@@ -57,7 +54,7 @@ impl super::BoardApi for Board {
         // red takes precedence over blue and green).
         let clocks = rcc
             .cfgr
-            .hclk(8.mhz())
+            .hclk(8.MHz())
             // .hsi48(true)
             // .sysclk(48.mhz())
             // .pclk1(24.mhz())
@@ -86,19 +83,19 @@ impl super::BoardApi for Board {
         let mut gpioa = p.GPIOA.split(&mut rcc.ahb2);
         let button = gpioa.pa0.into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
         let mut leds = [
-            gpioa.pa2.into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper).downgrade(),
-            gpioa.pa3.into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper).downgrade(),
-            gpioa.pa1.into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper).downgrade(),
+            gpioa.pa2.into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper).erase(),
+            gpioa.pa3.into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper).erase(),
+            gpioa.pa1.into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper).erase(),
         ];
         // For some reason, this seems to be needed.
         for led in leds.iter_mut() {
-            led.set_high().unwrap();
+            led.set_high();
         }
         let timer = Delay::new(c.SYST, clocks);
         let usb = Peripheral {
             usb: p.USB,
-            pin_dm: gpioa.pa11.into_af10(&mut gpioa.moder, &mut gpioa.afrh),
-            pin_dp: gpioa.pa12.into_af10(&mut gpioa.moder, &mut gpioa.afrh),
+            pin_dm: gpioa.pa11.into_alternate(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrh),
+            pin_dp: gpioa.pa12.into_alternate(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrh),
         };
         unsafe {
             USB_BUS = Some(UsbBus::new(usb));
@@ -116,10 +113,7 @@ impl super::BoardApi for Board {
     }
 
     fn input(&self) -> onekibu::Input {
-        onekibu::Input {
-            timestamp: pac::DWT::cycle_count() as usize,
-            button: self.button.is_low().unwrap(),
-        }
+        onekibu::Input { timestamp: pac::DWT::cycle_count() as usize, button: self.button.is_low() }
     }
 
     fn state(&mut self, state: onekibu::BitState) {
@@ -133,9 +127,9 @@ impl super::BoardApi for Board {
         #[allow(clippy::needless_range_loop)]
         for i in 0 .. 3 {
             if bits[i] == 0 {
-                self.leds[i].set_high().unwrap();
+                self.leds[i].set_high();
             } else {
-                self.leds[i].set_low().unwrap();
+                self.leds[i].set_low();
             }
         }
     }
