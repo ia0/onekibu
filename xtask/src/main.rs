@@ -17,6 +17,7 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::ffi::OsStr;
 use std::os::unix::process::CommandExt;
+use std::path::Path;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -26,6 +27,9 @@ enum Flags {
 
     /// Starts a gdb session
     Gdb(Gdb),
+
+    /// Runs rustfmt
+    Fmt,
 
     /// Runs clippy
     Clippy,
@@ -82,11 +86,19 @@ impl Flags {
         match self {
             Flags::Build(x) => x.execute(),
             Flags::Gdb(x) => x.execute(),
-            Flags::Clippy => {
-                let clippy = |package, args: &[&str]| {
+            Flags::Fmt => {
+                for dir in ["xtask", "firmware"] {
                     let mut cargo = Command::new("cargo");
+                    cargo.dir(dir);
+                    cargo.args(["fmt", "--", "--check"]);
+                    cargo.spawn();
+                }
+            }
+            Flags::Clippy => {
+                let clippy = |dir, args: &[&str]| {
+                    let mut cargo = Command::new("cargo");
+                    cargo.dir(dir);
                     cargo.arg("clippy");
-                    cargo.arg(format!("--package={}", package));
                     cargo.args(args);
                     cargo.arg("--");
                     cargo.arg("--deny=warnings");
@@ -95,17 +107,17 @@ impl Flags {
                 clippy("xtask", &[]);
                 for board in BOARDS {
                     clippy(
-                        "onekibu",
+                        "firmware",
                         &[&format!("--features=board-{}", board), &format!("--target={}", TARGET)],
                     );
                 }
             }
             Flags::Test => {
                 let mut cargo = Command::new("cargo");
+                cargo.dir("firmware");
                 cargo.arg("test");
-                cargo.arg("--package=onekibu");
                 cargo.arg("--lib");
-                cargo.spawn();
+                cargo.exec();
             }
         }
     }
@@ -120,8 +132,8 @@ impl Build {
             rustflags.push("-C link-arg=-Tstack-sizes.x");
         }
         cargo.env("ONEKIBU_MEMORY_X", format!("{}.x", self.board));
+        cargo.dir("firmware");
         cargo.arg("build");
-        cargo.arg("--package=onekibu");
         cargo.arg(format!("--target={}", TARGET));
         cargo.arg(format!("--features=board-{}", self.board));
         if self.release {
@@ -246,6 +258,10 @@ impl Command {
         self.command.env(key, value);
     }
 
+    fn dir(&mut self, dir: impl AsRef<Path>) {
+        self.command.current_dir(dir);
+    }
+
     fn arg(&mut self, arg: impl AsRef<OsStr>) {
         self.command.arg(arg);
     }
@@ -255,6 +271,9 @@ impl Command {
     }
 
     fn debug(&self) {
+        if let Some(d) = self.command.get_current_dir() {
+            eprint!("cd {:?} && ", d);
+        }
         for (k, v) in self.command.get_envs() {
             eprint!("{:?}={:?} ", k, v);
         }
