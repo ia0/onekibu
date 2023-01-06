@@ -108,7 +108,7 @@ impl Flags {
                 for board in BOARDS {
                     clippy(
                         "firmware",
-                        &[&format!("--features=board-{}", board), &format!("--target={}", TARGET)],
+                        &[&format!("--features=board-{board}"), &format!("--target={TARGET}")],
                     );
                 }
             }
@@ -134,7 +134,7 @@ impl Build {
         cargo.env("ONEKIBU_MEMORY_X", format!("{}.x", self.board));
         cargo.dir("firmware");
         cargo.arg("build");
-        cargo.arg(format!("--target={}", TARGET));
+        cargo.arg(format!("--target={TARGET}"));
         cargo.arg(format!("--features=board-{}", self.board));
         if self.release {
             cargo.arg("--release");
@@ -204,7 +204,7 @@ impl Build {
                 let hex = hex(self.release);
                 let mut uf2conv = Command::new("uf2conv.py");
                 uf2conv.arg("--family=0xADA52840");
-                uf2conv.arg(&hex);
+                uf2conv.arg(hex);
                 uf2conv.spawn();
             }
             "solo" => {
@@ -212,7 +212,7 @@ impl Build {
                 let mut solo = Command::new("solo");
                 solo.arg("program");
                 solo.arg("bootloader");
-                solo.arg(&hex);
+                solo.arg(hex);
                 solo.spawn();
             }
             _ => unimplemented!("No flash support for {}.", self.board),
@@ -272,10 +272,10 @@ impl Command {
 
     fn debug(&self) {
         if let Some(d) = self.command.get_current_dir() {
-            eprint!("cd {:?} && ", d);
+            eprint!("cd {d:?} && ");
         }
         for (k, v) in self.command.get_envs() {
-            eprint!("{:?}={:?} ", k, v);
+            eprint!("{k:?}={v:?} ");
         }
         eprintln!("{:?}", self.command);
     }
@@ -300,7 +300,7 @@ fn elf(release: bool) -> String {
 
 fn hex(release: bool) -> String {
     let elf = elf(release);
-    let hex = format!("{}.hex", elf);
+    let hex = format!("{elf}.hex");
     let mut objcopy = Command::new("arm-none-eabi-objcopy");
     objcopy.arg("-O");
     objcopy.arg("ihex");
