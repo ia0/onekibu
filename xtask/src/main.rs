@@ -270,18 +270,8 @@ impl Command {
         self.command.args(args);
     }
 
-    fn debug(&self) {
-        if let Some(d) = self.command.get_current_dir() {
-            eprint!("cd {d:?} && ");
-        }
-        for (k, v) in self.command.get_envs() {
-            eprint!("{k:?}={v:?} ");
-        }
-        eprintln!("{:?}", self.command);
-    }
-
     fn spawn(mut self) {
-        self.debug();
+        eprintln!("{:?}", self.command);
         let code = self.command.spawn().unwrap().wait().unwrap().code().unwrap();
         if code != 0 {
             std::process::exit(0);
@@ -289,7 +279,7 @@ impl Command {
     }
 
     fn exec(mut self) {
-        self.debug();
+        eprintln!("{:?}", self.command);
         panic!("{}", self.command.exec());
     }
 }
